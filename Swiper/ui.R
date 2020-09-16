@@ -9,7 +9,7 @@ library(magick)
 
 shinyUI(
   fixedPage(
-    includeCSS("style.css"),
+    includeCSS("www/style.css"),
     uiOutput("ticker"),
     uiOutput("stats"),
     shinyswipr_UI("swiper_object",
