@@ -1,0 +1,22 @@
+
+body {
+  background-color: #424242;
+}
+
+h4 {
+	text-align: center;
+	color: #A8A8A8;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+div {
+	border: none !important;
+	padding: 0px;
+	box-shadow: none !important;
+}
