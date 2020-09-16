@@ -1,3 +1,4 @@
+library(os)
 library(shiny)
 library(shinysense)
 library(magick)
@@ -15,7 +16,7 @@ print(the_date)
 
 ##############
 
-creds <<- read_yaml("../../c_drive/Creds.yaml")
+creds <<- read_yaml(os.environ['CREDS_PATH'])
 
 sql_driver <<- dbDriver("PostgreSQL")
 
