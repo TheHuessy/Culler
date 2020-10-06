@@ -29,8 +29,8 @@ pull_data <- function(){
                        password=creds$pg_pw,
                        dbname="strobot"
   )
-  ext_data <- dbGetQuery(sql_con,statement="SELECT link_id, piece as base_link, keep, 'culling_external' as table_name FROM culling_external WHERE keep IS NULL ORDER BY random() LIMIT 250")
-  dir_data <- dbGetQuery(sql_con,statement="SELECT link_id, end_link as base_link, keep, 'culling_direct' as table_name FROM culling_direct WHERE keep IS NULL ORDER BY random() LIMIT 250")
+  ext_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, piece as base_link, keep, 'culling_external' as table_name FROM culling_external WHERE keep IS NULL ORDER BY random() LIMIT ", Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
+  dir_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, end_link as base_link, keep, 'culling_direct' as table_name FROM culling_direct WHERE keep IS NULL ORDER BY random() LIMIT ",Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
 
   work <- rbind(ext_data, dir_data) %>%
     .[sample(nrow(.)),]
