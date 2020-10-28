@@ -101,6 +101,10 @@ get_cnt_safe <- function(work, cnt){
 
       tester <<- get_link(new_cnt)
 
+      #####
+      print(work[new_cnt,])
+      #####
+
       url_check <<- GET(tester)
 
       if (url_check$status_code == 200){
