@@ -83,6 +83,12 @@ get_link <- function(cnt){
 
 get_cnt_safe <- function(work, cnt){
   new_cnt <<- cnt + 1
+
+  #######
+  print(paste("Old count val:", cnt))
+  print(paste("New count val:", new_cnt))
+  #######
+
   if (new_cnt > nrow(work)){
     return(new_cnt)
   }
@@ -102,6 +108,7 @@ get_cnt_safe <- function(work, cnt){
       tester <<- get_link(new_cnt)
 
       #####
+      print(tester)
       print(work[new_cnt,])
       #####
 
