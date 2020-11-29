@@ -63,10 +63,19 @@ yes_pct <<- ""
 tot <<- nrow(work)
 
 insta_fresh <- function(piece){
-  pre_url <- paste("https://www.instagram.com",piece, "media/?size=l", sep="")
-  fresh_url = GET(pre_url)
-  return(fresh_url$url)
+
+  full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
+
+  page_data <- content(GET(full_url), "parsed")
+
+  if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
+    return("https://www.imgur.com/amadeuppage")
+  } else {
+    return(page_data$graphql$shortcode_media$display_url)
+  }
+
 }
+
 
 get_link <- function(cnt){
   test_link <- work[cnt,2]
