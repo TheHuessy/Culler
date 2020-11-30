@@ -66,14 +66,15 @@ insta_fresh <- function(piece){
 
   full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
 
-  page_data <- content(GET(full_url), "parsed")
+  response_data <- GET(full_url, authenticate(user = creds$un_insta, password = creds$pw_insta))
+
+  page_data <- content(response_data, "parsed")
 
   if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
     return("https://www.imgur.com/amadeuppage")
   } else {
     return(page_data$graphql$shortcode_media$display_url)
   }
-
 }
 
 
