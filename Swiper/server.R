@@ -63,10 +63,20 @@ yes_pct <<- ""
 tot <<- nrow(work)
 
 insta_fresh <- function(piece){
-  pre_url <- paste("https://www.instagram.com",piece, "media/?size=l", sep="")
-  fresh_url = GET(pre_url)
-  return(fresh_url$url)
+
+  full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
+
+  response_data <- GET(full_url, authenticate(user = creds$un_insta, password = creds$pw_insta))
+
+  page_data <- content(response_data, "parsed")
+
+  if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
+    return("https://www.imgur.com/amadeuppage")
+  } else {
+    return(page_data$graphql$shortcode_media$display_url)
+  }
 }
+
 
 get_link <- function(cnt){
   test_link <- work[cnt,2]
@@ -83,6 +93,7 @@ get_link <- function(cnt){
 
 get_cnt_safe <- function(work, cnt){
   new_cnt <<- cnt + 1
+
   if (new_cnt > nrow(work)){
     return(new_cnt)
   }
@@ -106,7 +117,7 @@ get_cnt_safe <- function(work, cnt){
       if (url_check$status_code == 200){
         break
       } else {
-        work[new_cnt,3] <<- 0
+        work[new_cnt,3] <<- 9
         tot_no <<- tot_no + 1
         new_cnt <<- new_cnt + 1
       }
