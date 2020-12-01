@@ -94,11 +94,6 @@ get_link <- function(cnt){
 get_cnt_safe <- function(work, cnt){
   new_cnt <<- cnt + 1
 
-  #######
-  print(paste("Old count val:", cnt))
-  print(paste("New count val:", new_cnt))
-  #######
-
   if (new_cnt > nrow(work)){
     return(new_cnt)
   }
@@ -117,17 +112,12 @@ get_cnt_safe <- function(work, cnt){
 
       tester <<- get_link(new_cnt)
 
-      #####
-      print(tester)
-      print(work[new_cnt,])
-      #####
-
       url_check <<- GET(tester)
 
       if (url_check$status_code == 200){
         break
       } else {
-        work[new_cnt,3] <<- 0
+        work[new_cnt,3] <<- 9
         tot_no <<- tot_no + 1
         new_cnt <<- new_cnt + 1
       }
