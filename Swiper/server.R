@@ -167,12 +167,24 @@ cnt <<- get_cnt_safe(work,0)
 
 get_link <- function(cnt){
   test_link <- work[cnt,2]
+
+  ##########
+  print(paste("Test link:", test_link))
+  ##########
+  
+
   test <- grep(pattern="/p/", x=test_link)
   if (length(test) == 0){
     output_link <- work[cnt,2]
   } else {
     output_link <- insta_fresh(work[cnt,2])
   }
+
+  ########
+  print(paste("Outputed Test Link:", output_link))
+  ########
+  
+
   return(output_link)
 }
 
