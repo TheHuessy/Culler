@@ -62,38 +62,101 @@ tot_no <<- 0
 yes_pct <<- ""
 tot <<- nrow(work)
 
+
+
+
+parse_csrf <- function(cookie_table){
+  output <- cookie_table[which(cookie_table$name == "csrftoken"),7]
+  return(output)
+}
+
+set_insta_session <- function(full_url){
+  time_rn <- round(as.numeric(as.POSIXct(Sys.time())),0)
+
+  response_data <- GET(full_url)
+  csrf <- parse_csrf(response_data$cookies)
+  #login_link <- response_data$url
+  login_link <- "https://www.instagram.com/accounts/login/"
+
+  post_body <- list(
+                    username = creds$un_insta,
+                    enc_password = paste('#PWD_INSTAGRAM_BROWSER:0:{', time_rn, '}:', creds$pw_insta, sep = ""),  # <-- note the '0' - that means we want to use plain passwords
+                    optIntoOneTap = 'false'
+  )
+
+  post_headers <- c(
+                    'user-agent' = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+                    'x-requested-with' = "XMLHttpRequest",
+                    referer = login_link,
+                    'x-csrftoken' = csrf
+  )
+
+  auth_post <- POST(url = paste(login_link, "ajax/", sep = ""), body = post_body, add_headers(post_headers))
+
+  if ("sessionid" %in% auth_post$cookies$name) {
+    print("Reauthenticated!")
+    ######### CHECK TO SEE IF RUNNING THE PAGE FROM HERE MAINTAINS A SESSION ###############
+    page_retry <- content(GET(full_url, add_headers('x-csrftoken' =  parse_csrf(auth_post$cookies))))
+    if (is.null(page_retry$graphql$shortcode_media$display_url) == FALSE){
+      return(page_retry)
+    } else {
+      print("Reuathentication did not work")
+      print(page_retry)
+      return(page_retry)
+    }
+  } else {
+    print("Not able to authenticate instagram!")
+    print(auth_post)
+    return(auth_post)
+  }
+
+}
+
+reauthenticate <- function(full_url){
+  #no_api <- gsub("\\?__a=1", "", full_url)
+  page_data <- set_insta_session(full_url)
+  #first_hit <- GET(no_api)
+  #Sys.sleep(2)
+  #page_data <- content(GET(full_url))
+  if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
+    return("https://www.imgur.com/thispageisactuallydead")
+  } else{
+    return(page_data$graphql$shortcode_media$display_url)
+  }
+}
+
 insta_fresh <- function(piece){
 
   full_url <- paste("https://www.instagram.com", piece, "?__a=1", sep = "")
 
-  response_data <- GET(full_url, authenticate(user = creds$un_insta, password = creds$pw_insta))
+  ## If response is bad [define in a little bit], run set_insta_sesson and then retry  
 
-  page_data <- content(response_data, "parsed")
+  page_data <- content(GET(full_url))
 
   if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
-    return("https://www.imgur.com/amadeuppage")
+    print("reauthenticate!")
+    return(reauthenticate(full_url))
   } else {
     return(page_data$graphql$shortcode_media$display_url)
   }
 }
 
-
-get_link <- function(cnt){
-
-  #######
-  print(paste("Row:",work[cnt,], sep = "\n"))
-  #######
-
-  test_link <- work[cnt,2]
-  test <- grep(pattern="/p/", x=test_link)
-  if (length(test) == 0){
-    output_link <- work[cnt,2]
-  } else {
-    output_link <- insta_fresh(work[cnt,2])
-  }
-
-  return(output_link)
-}
+#get_link <- function(cnt){
+#
+#  #######
+#  print(paste("Row:",work[cnt,], sep = "\n"))
+#  #######
+#
+#  test_link <- work[cnt,2]
+#  test <- grep(pattern="/p/", x=test_link)
+#  if (length(test) == 0){
+#    output_link <- work[cnt,2]
+#  } else {
+#    output_link <- insta_fresh(work[cnt,2])
+#  }
+#
+#  return(output_link)
+#}
 
 
 #get_cnt_safe <- function(work, cnt){
@@ -136,43 +199,51 @@ get_link <- function(cnt){
 get_cnt_safe <- function(work, cnt){
 
   #### Maybe have it just evaluate if the count is higher than the tot value, then do all the GET testing in get_link
-  new_cnt <<- cnt + 1
+  new_cnt <<- as.numeric(cnt) + 1
 
-  if (new_cnt < nrow(work)){
-    return(new_cnt)
-  } else {
-    pull_new_cohort()
+
+  ###################################################
+  ###### CHANGE THIS ONCE WE HAVE A KEY VALUE CNT OBJECT, CREATES INFINITE LOOP
+  if (new_cnt > nrow(work)){
+    pull_new_cohort(cnt)
+    new_cnt <<- 1
   }
+  ##########################################################################
+  ###################################################3
+
+  while (TRUE){
+    next_ext_bool <<- file_ext(work[new_cnt,2]) %in% c("mp4", "mkv", "gif", "avi", "m4v", "m4p", "mpg")
+    if (next_ext_bool == TRUE){
+
+      # Set this URL's keep value to 0
+      work[new_cnt,3] <<- 0 
+      tot_no <<- tot_no + 1
+
+      # Advance one more
+      new_cnt <<- new_cnt + 1
+    } else {
+
+      tester <<- get_link(new_cnt)
+
+      #########################################
+      print("Checking tester in get_link while loop:")
+      print(tester)
+      print("=============================")
+      ###########################################
+
+      url_check <<- try(status_code(GET(tester)), silent = TRUE)
+
+      if (url_check == 200){
+        break
+      } else {
+        work[new_cnt,3] <<- 9
+        tot_no <<- tot_no + 1
+        new_cnt <<- new_cnt + 1
+      }
+    }
+  }
+  return(c(new_cnt, tester))
 }
-
-
-#  while (TRUE){
-#    next_ext_bool <<- file_ext(work[new_cnt,2]) %in% c("mp4", "mkv", "gif", "avi", "m4v", "m4p", "mpg")
-#    if (next_ext_bool == TRUE){
-#
-#      # Set this URL's keep value to 0
-#      work[new_cnt,3] <<- 0 
-#      tot_no <<- tot_no + 1
-#
-#      # Advance one more
-#      new_cnt <<- new_cnt + 1
-#    } else {
-#
-#      tester <<- get_link(new_cnt)
-#
-#      url_check <<- GET(tester)
-#
-#      if (url_check$status_code == 200){
-#        break
-#      } else {
-#        work[new_cnt,3] <<- 9
-#        tot_no <<- tot_no + 1
-#        new_cnt <<- new_cnt + 1
-#      }
-#    }
-#  }
-#  return(new_cnt)
-#}
 
 save_file <- function(work, cnt){
 
@@ -183,10 +254,17 @@ save_file <- function(work, cnt){
                        dbname="strobot"
   )
 
-  for (idx in (cnt-5):(cnt-1)){
+  for (idx in (as.numeric(cnt)-5):(as.numeric(cnt)-1)){
     link <- work[idx,2]
     new_keep <- work[idx,3]
     tbl_name <- work[idx,4]
+    ################################################
+    print("saving at row:")
+    print(idx)
+    print("===================")
+    print(work[idx,])
+    print("===================")
+    ################################################
     if (tbl_name == "culling_external"){
       col_name <- "piece"
     } else {
@@ -203,10 +281,15 @@ save_file <- function(work, cnt){
                            "'",
                            sep = ""
     )
+    
+    ###################################
+    print(update_string)
+    ###################################
+
     dbExecute(sql_con, update_string)
   }
   dbDisconnect(sql_con)
-  last_saved <<- cnt-1
+  last_saved <<- as.numeric(cnt)-1
 }
 
 
@@ -238,7 +321,7 @@ get_link <- function(cnt){
 }
 
 pull_new_cohort <- function(cnt){
-  save_diff <<- cnt - last_saved
+  save_diff <<- as.numeric(cnt) - last_saved
 
   if (save_diff != 1){
     sql_con <<- dbConnect(sql_driver,
@@ -248,7 +331,7 @@ pull_new_cohort <- function(cnt){
                           dbname="strobot"
     )
 
-    for (idx in (last_saved):(cnt-1)){
+    for (idx in (last_saved):(as.numeric(cnt)-1)){
       link <- work[idx,2]
       new_keep <- work[idx,3]
       tbl_name <- work[idx,4]
@@ -276,22 +359,25 @@ pull_new_cohort <- function(cnt){
 
   work <<- pull_data()
   tot_left <<- pull_total()
-
-  cnt <<- get_cnt_safe(work,0)
-
   last_saved <<- 0
+
+  # cnt <<- get_cnt_safe(work,0)
+#  cnt <<- 1
+
+  # last_saved <<- 0
   tot_yes <<- 0
   tot_no <<- 0
   yes_pct <<- ""
   tot <<- nrow(work)
-  if (tot == 0){
-    img <- image_read(end_img) %>%
-      image_write("tmp.jpg")
-  } else{
-    img_link <<- get_link(cnt)
-    img <<- image_read(img_link) %>% 
-      image_write("tmp.jpg")
-  }
+#  if (tot == 0){
+#    img <- image_read(end_img) %>%
+#      image_write("tmp.jpg")
+#  } else{
+#    img_link <<- cnt[2]
+#    print(paste("Image link to be read as image:", img_link))
+#    img <<- image_read(img_link) %>% 
+#      image_write("tmp.jpg")
+#  }
 
 }
 
@@ -304,7 +390,7 @@ shinyServer(function(input, output, session) {
 
               save_if_5 <- function(cnt) {
 
-                if ((cnt-1) %% 5 == 0){
+                if ((as.numeric(cnt)-1) %% 5 == 0){
                   save_file(work, cnt)
                   output$ticker <- renderUI({
                     h4(paste(cnt, " of ", tot, " * (", tot_left, ")", sep = ""))
@@ -328,7 +414,7 @@ shinyServer(function(input, output, session) {
                 img <- image_read(end_img) %>%
                   image_write("tmp.jpg")
               } else{
-                img_link <<- get_link(cnt)
+                img_link <<- cnt[2]
                 img <- image_read(img_link) %>%
                   image_write("tmp.jpg")
               }
@@ -341,7 +427,7 @@ shinyServer(function(input, output, session) {
 
 
               output$ticker <- renderUI({
-                h4(paste(cnt, " of ", tot, " (", tot_left, ")", sep = ""))
+                h4(paste(cnt[1], " of ", tot, " (", tot_left, ")", sep = ""))
               })
 
               output$stats <- renderUI({
@@ -353,26 +439,43 @@ shinyServer(function(input, output, session) {
                              #### ASSIGN KEEP VALUE ####
 
                              if (object_swipe() == "left"){
-                               work[cnt,3] <<- 0
+                               work[as.numeric(cnt[1]),3] <<- 0
+
+                               #########################
+                               print(paste("NO to", cnt[2]))
+                               ########################
+
+
                                tot_no <<- tot_no + 1
                              } else if (object_swipe() == "right") {
-                               work[cnt,3] <<- 1
+                               work[as.numeric(cnt[1]),3] <<- 1
+
+                               #########################
+                               print(paste("NO to", cnt[2]))
+                               ########################
+
+
                                tot_yes <<- tot_yes + 1
                              }
 
-                             cnt <<- get_cnt_safe(work,cnt)
+                             cnt <<- get_cnt_safe(work,as.numeric(cnt[1]))
 
-                             yes_pct <<- round(tot_yes/cnt, digits = 3)*100
+                             #####################################################
+                             print("Newly generated cnt value:")
+                             print(cnt)
+                             ######################################################
 
-                             save_if_5(cnt)
+                             yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
 
-                             if (cnt > tot){
+                             save_if_5(cnt[1])
 
-                               pull_new_cohort(cnt)
+                             if (as.numeric(cnt[1]) > tot){
+
+                               pull_new_cohort(as.numeric(cnt[1]))
 
                              } else {
                                ## Update image and resave tmp
-                               img_link <<- get_link(cnt)
+                               img_link <<- cnt[2]
                                img <<- image_read(img_link) %>% 
                                  image_write("tmp.jpg")
                              }
@@ -385,6 +488,11 @@ shinyServer(function(input, output, session) {
                              output$stats <- renderUI({
                                h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", sep=""))
                              })
+
+                             print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                             print("END OF SWIPE ACTION")
+                             print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
 
               })
 
