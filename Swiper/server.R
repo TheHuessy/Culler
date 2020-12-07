@@ -202,6 +202,8 @@ get_cnt_safe <- function(work, cnt){
   new_cnt <<- as.numeric(cnt) + 1
 
 
+  #################################################
+  print(paste("get_cnt_safe test value:", new_cnt))
   ###################################################
   ###### CHANGE THIS ONCE WE HAVE A KEY VALUE CNT OBJECT, CREATES INFINITE LOOP
   if (new_cnt > nrow(work)){
@@ -212,6 +214,12 @@ get_cnt_safe <- function(work, cnt){
   ###################################################3
 
   while (TRUE){
+    ## Catch if the last test pushed the cnt number over the number of rows in the cohort
+    if (new_cnt > nrow(work)){
+      pull_new_cohort(new_cnt - 1)
+      new_cnt <<- 1
+    }
+
     next_ext_bool <<- file_ext(work[new_cnt,2]) %in% c("mp4", "mkv", "gif", "avi", "m4v", "m4p", "mpg")
     if (next_ext_bool == TRUE){
 
@@ -297,11 +305,11 @@ get_link <- function(cnt){
   test_link <- work[cnt,2]
 
   #########
-  print(paste("CNT:", cnt))
-  print(paste("Generated: Link:", test_link))
-  print("====================")
-  print(work[cnt,])
-  print("====================")
+ # print(paste("CNT:", cnt))
+ # print(paste("Generated: Link:", test_link))
+ # print("====================")
+ # print(work[cnt,])
+ # print("====================")
   ##########
   
 
@@ -332,6 +340,11 @@ pull_new_cohort <- function(cnt){
     )
 
     for (idx in (last_saved):(as.numeric(cnt)-1)){
+        ##########################
+      print("pull new cohort work object row:")
+      print(work[idx,])
+
+
       link <- work[idx,2]
       new_keep <- work[idx,3]
       tbl_name <- work[idx,4]
@@ -386,8 +399,7 @@ end_img <- "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Thats_all_
 cnt <<- get_cnt_safe(work,0)
 
 shinyServer(function(input, output, session) {
-              ###### APP DEPENDANT FUNCTIONS ######
-
+              ###### APP DEPENDANT FUNCTIONS ######a
               save_if_5 <- function(cnt) {
 
                 if ((as.numeric(cnt)-1) %% 5 == 0){
@@ -467,7 +479,7 @@ shinyServer(function(input, output, session) {
 
                              yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
 
-                             save_if_5(cnt[1])
+                             save_if_5(as.numeric(cnt[1]))
 
                              if (as.numeric(cnt[1]) > tot){
 
