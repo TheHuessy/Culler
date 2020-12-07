@@ -402,7 +402,7 @@ shinyServer(function(input, output, session) {
               ###### APP DEPENDANT FUNCTIONS ######a
               save_if_5 <- function(cnt) {
 
-                if ((as.numeric(cnt)-1) %% 5 == 0){
+                if ((as.numeric(cnt)-1) %% 5 == 0 && (as.numeric(cnt)-1) != 0){
                   save_file(work, cnt)
                   output$ticker <- renderUI({
                     h4(paste(cnt, " of ", tot, " * (", tot_left, ")", sep = ""))
