@@ -7,8 +7,6 @@ library(yaml)
 library(tools)
 library(httr)
 
-##### PULL IN DATA FROM POSTGRES #####
-
 ## For the logs
 the_date <- format(Sys.time(), "%Y-%m-%d:%H:%M")
 print(the_date)
@@ -52,6 +50,8 @@ pull_total <- function(){
   return(tot_left)
 }
 
+##### ESTABLISH UNIVERSAL VARIABLES #####
+
 work <<- pull_data()
 tot_left <<- pull_total()
 
@@ -63,7 +63,7 @@ yes_pct <<- ""
 tot <<- nrow(work)
 
 
-
+##### FUNCTION DEFS #####
 
 parse_csrf <- function(cookie_table){
   output <- cookie_table[which(cookie_table$name == "csrftoken"),7]
@@ -75,12 +75,11 @@ set_insta_session <- function(full_url){
 
   response_data <- GET(full_url)
   csrf <- parse_csrf(response_data$cookies)
-  #login_link <- response_data$url
   login_link <- "https://www.instagram.com/accounts/login/"
 
   post_body <- list(
                     username = creds$un_insta,
-                    enc_password = paste('#PWD_INSTAGRAM_BROWSER:0:{', time_rn, '}:', creds$pw_insta, sep = ""),  # <-- note the '0' - that means we want to use plain passwords
+                    enc_password = paste('#PWD_INSTAGRAM_BROWSER:0:{', time_rn, '}:', creds$pw_insta, sep = ""),
                     optIntoOneTap = 'false'
   )
 
@@ -111,11 +110,7 @@ set_insta_session <- function(full_url){
 }
 
 reauthenticate <- function(full_url){
-  #no_api <- gsub("\\?__a=1", "", full_url)
   page_data <- set_insta_session(full_url)
-  #first_hit <- GET(no_api)
-  #Sys.sleep(2)
-  #page_data <- content(GET(full_url))
   if (is.null(page_data$graphql$shortcode_media$display_url) == TRUE){
     return("https://www.imgur.com/thispageisactuallydead")
   } else{
@@ -196,13 +191,6 @@ save_file <- function(work, cnt){
     link <- work[idx,2]
     new_keep <- work[idx,3]
     tbl_name <- work[idx,4]
-    ################################################
-   # print("saving at row:")
-   # print(idx)
-   # print("===================")
-   # print(work[idx,])
-   # print("===================")
-    ################################################
     if (tbl_name == "culling_external"){
       col_name <- "piece"
     } else {
@@ -234,26 +222,12 @@ save_file <- function(work, cnt){
 get_link <- function(cnt){
   test_link <- work[cnt,2]
 
-  #########
- # print(paste("CNT:", cnt))
- # print(paste("Generated: Link:", test_link))
- # print("====================")
- # print(work[cnt,])
- # print("====================")
-  ##########
-  
-
   test <- grep(pattern="/p/", x=test_link)
   if (length(test) == 0){
     output_link <- work[cnt,2]
   } else {
     output_link <- insta_fresh(work[cnt,2])
   }
-
-  ########
- # print(paste("Outputed Test Link:", output_link))
-  ########
-  
 
   return(output_link)
 }
@@ -271,11 +245,6 @@ pull_new_cohort <- function(cnt){
     )
 
     for (idx in (last_saved):(as.numeric(cnt)-1)){
-        ##########################
-     # print("pull new cohort work object row:")
-     # print(work[idx,])
-
-
       link <- work[idx,2]
       new_keep <- work[idx,3]
       tbl_name <- work[idx,4]
@@ -305,23 +274,10 @@ pull_new_cohort <- function(cnt){
   tot_left <<- pull_total()
   last_saved <<- 0
 
-  # cnt <<- get_cnt_safe(work,0)
-#  cnt <<- 1
-
-  # last_saved <<- 0
   tot_yes <<- 0
   tot_no <<- 0
   yes_pct <<- ""
   tot <<- nrow(work)
-#  if (tot == 0){
-#    img <- image_read(end_img) %>%
-#      image_write("tmp.jpg")
-#  } else{
-#    img_link <<- cnt[2]
-#    print(paste("Image link to be read as image:", img_link))
-#    img <<- image_read(img_link) %>% 
-#      image_write("tmp.jpg")
-#  }
 
 }
 
@@ -384,29 +340,14 @@ shinyServer(function(input, output, session) {
                              if (object_swipe() == "left"){
                                work[as.numeric(cnt[1]),3] <<- 0
 
-                               #########################
-                          #     print(paste("NO to", cnt[2]))
-                               ########################
-
-
                                tot_no <<- tot_no + 1
                              } else if (object_swipe() == "right") {
                                work[as.numeric(cnt[1]),3] <<- 1
-
-                               #########################
-                           #    print(paste("NO to", cnt[2]))
-                               ########################
-
 
                                tot_yes <<- tot_yes + 1
                              }
 
                              cnt <<- get_cnt_safe(work,as.numeric(cnt[1]))
-
-                             #####################################################
-                            # print("Newly generated cnt value:")
-                            # print(cnt)
-                             ######################################################
 
                              yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
 
@@ -431,10 +372,6 @@ shinyServer(function(input, output, session) {
                              output$stats <- renderUI({
                                h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", sep=""))
                              })
-
-                             #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-                             #print("END OF SWIPE ACTION")
-                             #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
 
               })
