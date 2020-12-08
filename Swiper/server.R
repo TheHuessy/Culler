@@ -101,12 +101,10 @@ set_insta_session <- function(full_url){
       return(page_retry)
     } else {
       print("Reuathentication did not work")
-      print(page_retry)
       return(page_retry)
     }
   } else {
     print("Not able to authenticate instagram!")
-    print(auth_post)
     return(auth_post)
   }
 
@@ -141,78 +139,16 @@ insta_fresh <- function(piece){
   }
 }
 
-#get_link <- function(cnt){
-#
-#  #######
-#  print(paste("Row:",work[cnt,], sep = "\n"))
-#  #######
-#
-#  test_link <- work[cnt,2]
-#  test <- grep(pattern="/p/", x=test_link)
-#  if (length(test) == 0){
-#    output_link <- work[cnt,2]
-#  } else {
-#    output_link <- insta_fresh(work[cnt,2])
-#  }
-#
-#  return(output_link)
-#}
-
-
-#get_cnt_safe <- function(work, cnt){
-#
-#  #### Maybe have it just evaluate if the count is higher than the tot value, then do all the GET testing in get_link
-#  new_cnt <<- cnt + 1
-#
-#  if (new_cnt > nrow(work)){
-#    return(new_cnt)
-#  }
-#
-#  while (TRUE){
-#    next_ext_bool <<- file_ext(work[new_cnt,2]) %in% c("mp4", "mkv", "gif", "avi", "m4v", "m4p", "mpg")
-#    if (next_ext_bool == TRUE){
-#
-#      # Set this URL's keep value to 0
-#      work[new_cnt,3] <<- 0 
-#      tot_no <<- tot_no + 1
-#
-#      # Advance one more
-#      new_cnt <<- new_cnt + 1
-#    } else {
-#
-#      tester <<- get_link(new_cnt)
-#
-#      url_check <<- GET(tester)
-#
-#      if (url_check$status_code == 200){
-#        break
-#      } else {
-#        work[new_cnt,3] <<- 9
-#        tot_no <<- tot_no + 1
-#        new_cnt <<- new_cnt + 1
-#      }
-#    }
-#  }
-#  return(new_cnt)
-#}
-
 get_cnt_safe <- function(work, cnt){
 
   #### Maybe have it just evaluate if the count is higher than the tot value, then do all the GET testing in get_link
   new_cnt <<- as.numeric(cnt) + 1
 
 
-  #################################################
-  print(paste("get_cnt_safe test value:", new_cnt))
-  ###################################################
-  ###### CHANGE THIS ONCE WE HAVE A KEY VALUE CNT OBJECT, CREATES INFINITE LOOP
   if (new_cnt > nrow(work)){
-    pull_new_cohort(cnt)
+    pull_new_cohort(new_cnt-1)
     new_cnt <<- 1
   }
-  ##########################################################################
-  ###################################################3
-
   while (TRUE){
     ## Catch if the last test pushed the cnt number over the number of rows in the cohort
     if (new_cnt > nrow(work)){
@@ -232,12 +168,6 @@ get_cnt_safe <- function(work, cnt){
     } else {
 
       tester <<- get_link(new_cnt)
-
-      #########################################
-      print("Checking tester in get_link while loop:")
-      print(tester)
-      print("=============================")
-      ###########################################
 
       url_check <<- try(status_code(GET(tester)), silent = TRUE)
 
@@ -267,11 +197,11 @@ save_file <- function(work, cnt){
     new_keep <- work[idx,3]
     tbl_name <- work[idx,4]
     ################################################
-    print("saving at row:")
-    print(idx)
-    print("===================")
-    print(work[idx,])
-    print("===================")
+   # print("saving at row:")
+   # print(idx)
+   # print("===================")
+   # print(work[idx,])
+   # print("===================")
     ################################################
     if (tbl_name == "culling_external"){
       col_name <- "piece"
@@ -321,7 +251,7 @@ get_link <- function(cnt){
   }
 
   ########
-  print(paste("Outputed Test Link:", output_link))
+ # print(paste("Outputed Test Link:", output_link))
   ########
   
 
@@ -329,6 +259,7 @@ get_link <- function(cnt){
 }
 
 pull_new_cohort <- function(cnt){
+  print(paste("going into pull new cohort, last_saved value =", last_saved))
   save_diff <<- as.numeric(cnt) - last_saved
 
   if (save_diff != 1){
@@ -341,8 +272,8 @@ pull_new_cohort <- function(cnt){
 
     for (idx in (last_saved):(as.numeric(cnt)-1)){
         ##########################
-      print("pull new cohort work object row:")
-      print(work[idx,])
+     # print("pull new cohort work object row:")
+     # print(work[idx,])
 
 
       link <- work[idx,2]
@@ -364,7 +295,7 @@ pull_new_cohort <- function(cnt){
                              "'",
                              sep = ""
       )
-
+      print(update_string)
       dbExecute(sql_con, update_string)
     }
     dbDisconnect(sql_con)
@@ -454,7 +385,7 @@ shinyServer(function(input, output, session) {
                                work[as.numeric(cnt[1]),3] <<- 0
 
                                #########################
-                               print(paste("NO to", cnt[2]))
+                          #     print(paste("NO to", cnt[2]))
                                ########################
 
 
@@ -463,7 +394,7 @@ shinyServer(function(input, output, session) {
                                work[as.numeric(cnt[1]),3] <<- 1
 
                                #########################
-                               print(paste("NO to", cnt[2]))
+                           #    print(paste("NO to", cnt[2]))
                                ########################
 
 
@@ -473,8 +404,8 @@ shinyServer(function(input, output, session) {
                              cnt <<- get_cnt_safe(work,as.numeric(cnt[1]))
 
                              #####################################################
-                             print("Newly generated cnt value:")
-                             print(cnt)
+                            # print("Newly generated cnt value:")
+                            # print(cnt)
                              ######################################################
 
                              yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
@@ -501,9 +432,9 @@ shinyServer(function(input, output, session) {
                                h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", sep=""))
                              })
 
-                             print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-                             print("END OF SWIPE ACTION")
-                             print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                             #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                             #print("END OF SWIPE ACTION")
+                             #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
 
               })
