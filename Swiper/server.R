@@ -27,10 +27,14 @@ pull_data <- function(){
                        password=creds$pg_pw,
                        dbname="strobot"
   )
-  ext_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, piece as base_link, keep, 'culling_external' as table_name FROM culling_external WHERE keep IS NULL ORDER BY random() LIMIT ", Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
+## COMMENTING OUT EXTERNAL CULLS BECAUSE OF CONSTANT ACCESS ISSUES
+## WAITING TO DEVELOP PATCH FOR THIS (IF POSSIBLE) IN THE FUTURE
+#  ext_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, piece as base_link, keep, 'culling_external' as table_name FROM culling_external WHERE keep IS NULL ORDER BY random() LIMIT ", Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
   dir_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, end_link as base_link, keep, 'culling_direct' as table_name FROM culling_direct WHERE keep IS NULL ORDER BY random() LIMIT ",Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
 
-  work <- rbind(ext_data, dir_data) %>%
+#  work <- rbind(ext_data, dir_data) %>%
+#    .[sample(nrow(.)),]
+  work <- dir_data %>%
     .[sample(nrow(.)),]
   dbDisconnect(sql_con)
   return(work)
@@ -44,7 +48,9 @@ pull_total <- function(){
                        dbname="strobot"
   )
 
-  tot_left <- dbGetQuery(sql_con, statement="SELECT SUM(total) FROM (SELECT COUNT(*) as total FROM culling_external WHERE keep IS NULL UNION ALL SELECT COUNT(*) as total FROM culling_direct WHERE keep IS NULL) as tbl") %>%
+#  tot_left <- dbGetQuery(sql_con, statement="SELECT SUM(total) FROM (SELECT COUNT(*) as total FROM culling_external WHERE keep IS NULL UNION ALL SELECT COUNT(*) as total FROM culling_direct WHERE keep IS NULL) as tbl") %>%
+#    format(big.mark = ",")
+  tot_left <- dbGetQuery(sql_con, statement="SELECT COUNT(*) as total FROM culling_direct WHERE keep IS NULL") %>%
     format(big.mark = ",")
   dbDisconnect(sql_con)
   return(tot_left)
@@ -283,10 +289,13 @@ pull_new_cohort <- function(cnt){
 
 end_img <- "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Thats_all_folks.svg/1019px-Thats_all_folks.svg.png"
 
-cnt <<- get_cnt_safe(work,0)
+#cnt <<- get_cnt_safe(work,0)
 
 shinyServer(function(input, output, session) {
-              ###### APP DEPENDANT FUNCTIONS ######a
+              ###### APP DEPENDANT FUNCTIONS ######
+              if (!exists("cnt")){
+              cnt <<- get_cnt_safe(work,0)
+              }
               save_if_5 <- function(cnt) {
 
                 if ((as.numeric(cnt)-1) %% 5 == 0 && (as.numeric(cnt)-1) != 0){
