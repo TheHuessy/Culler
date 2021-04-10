@@ -173,8 +173,14 @@ get_cnt_safe <- function(work, cnt){
       url_check <<- try(status_code(GET(tester)), silent = TRUE)
 
       if (url_check == 200){
+        ### LOGGING ###
+        print(tester)
+        ###############
         break
       } else {
+        ### LOGGING ###
+        print(paste("Link got 9'd:", tester))
+        ###############
         work[new_cnt,3] <<- 9
         tot_no <<- tot_no + 1
         new_cnt <<- new_cnt + 1
@@ -253,12 +259,18 @@ pull_new_cohort <- function(cnt){
     for (idx in (last_saved):(as.numeric(cnt)-1)){
       link <- work[idx,2]
       new_keep <- work[idx,3]
+    # To catch wrong swipes and undesired values going into the db
+      if (identical(new_keep, numeric(0)) || new_keep == "NA" || is.na(new_keep)){
+            next
+    }
       tbl_name <- work[idx,4]
-      if (tbl_name == "culling_external"){
-        col_name <- "piece"
-      } else {
-        col_name <- "end_link"
-      }
+      ## BELOW COMMENTED OUT TO WAIT ON INSTAGRAM DEV WORK
+     # if (tbl_name == "culling_external"){
+     #   col_name <- "piece"
+     # } else {
+     #   col_name <- "end_link"
+     # }
+      col_name <- "end_link"
       update_string <- paste("UPDATE ",
                              tbl_name,
                              " SET keep = ",
