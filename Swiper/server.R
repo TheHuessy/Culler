@@ -17,16 +17,21 @@ creds <<- read_yaml(Sys.getenv('CREDS_PATH'))
 
 sql_driver <<- dbDriver("PostgreSQL")
 
+make_sql_con <- function(sql_driver, creds){
+  return(dbConnect(sql_driver,
+                   host=creds$pg_host,
+                   user=creds$pg_user,
+                   password=creds$pg_pw,
+                   dbname="strobot"
+        )
+  )
+}
+
 
 ####### PULLING IN DATA ##########
 
 pull_data <- function(){
-  sql_con <- dbConnect(sql_driver,
-                       host=creds$pg_host,
-                       user=creds$pg_user,
-                       password=creds$pg_pw,
-                       dbname="strobot"
-  )
+  sql_con <- make_sql_con(sql_driver, creds)
 ## COMMENTING OUT EXTERNAL CULLS BECAUSE OF CONSTANT ACCESS ISSUES
 ## WAITING TO DEVELOP PATCH FOR THIS (IF POSSIBLE) IN THE FUTURE
 #  ext_data <- dbGetQuery(sql_con,statement=paste("SELECT link_id, piece as base_link, keep, 'culling_external' as table_name FROM culling_external WHERE keep IS NULL ORDER BY random() LIMIT ", Sys.getenv('CULLER_BATCH_SIZE'), sep=""))
@@ -41,12 +46,7 @@ pull_data <- function(){
 }
 
 pull_total <- function(){
-  sql_con <- dbConnect(sql_driver,
-                       host=creds$pg_host,
-                       user=creds$pg_user,
-                       password=creds$pg_pw,
-                       dbname="strobot"
-  )
+  sql_con <- make_sql_con(sql_driver, creds)
 
 #  tot_left <- dbGetQuery(sql_con, statement="SELECT SUM(total) FROM (SELECT COUNT(*) as total FROM culling_external WHERE keep IS NULL UNION ALL SELECT COUNT(*) as total FROM culling_direct WHERE keep IS NULL) as tbl") %>%
 #    format(big.mark = ",")
@@ -56,11 +56,20 @@ pull_total <- function(){
   return(tot_left)
 }
 
+pull_done_number <- function(){
+  sql_con <- make_sql_con(sql_driver, creds)
+
+  tot_done <- dbGetQuery(sql_con, statement="SELECT COUNT(*) as total FROM culling_direct WHERE keep = 1") %>%
+    format(big.mark = ",")
+  dbDisconnect(sql_con)
+  return(tot_done)
+}
+
 ##### ESTABLISH UNIVERSAL VARIABLES #####
 
 work <<- pull_data()
 tot_left <<- pull_total()
-
+tot_done <<- pull_done_number()
 last_saved <<- 0
 
 tot_yes <<- 0
@@ -192,12 +201,7 @@ get_cnt_safe <- function(work, cnt){
 
 save_file <- function(work, cnt){
 
-  sql_con <<- dbConnect(sql_driver,
-                       host=creds$pg_host,
-                       user=creds$pg_user,
-                       password=creds$pg_pw,
-                       dbname="strobot"
-  )
+  sql_con <<- make_sql_con(sql_driver, creds)
 
   for (idx in (as.numeric(cnt)-5):(as.numeric(cnt)-1)){
     link <- work[idx,2]
@@ -249,12 +253,7 @@ pull_new_cohort <- function(cnt){
   save_diff <<- as.numeric(cnt) - last_saved
 
   if (save_diff != 1){
-    sql_con <<- dbConnect(sql_driver,
-                          host=creds$pg_host,
-                          user=creds$pg_user,
-                          password=creds$pg_pw,
-                          dbname="strobot"
-    )
+    sql_con <<- make_sql_con(sql_driver, creds)
 
     for (idx in (last_saved):(as.numeric(cnt)-1)){
       link <- work[idx,2]
@@ -289,6 +288,7 @@ pull_new_cohort <- function(cnt){
   }
 
   work <<- pull_data()
+  tot_done <<- pull_done_number()
   tot_left <<- pull_total()
   last_saved <<- 0
 
@@ -351,7 +351,7 @@ shinyServer(function(input, output, session) {
               })
 
               output$stats <- renderUI({
-                h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", sep=""))
+                h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", " (", tot_done, ")", sep=""))
               })
 
               observeEvent(object_swipe(), {
@@ -370,7 +370,8 @@ shinyServer(function(input, output, session) {
 
                              cnt <<- get_cnt_safe(work,as.numeric(cnt[1]))
 
-                             yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
+#                             yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
+                             yes_pct <<- round(tot_yes/(tot_yes+tot_no), digits = 3)*100
 
                              save_if_5(as.numeric(cnt[1]))
 
@@ -391,7 +392,7 @@ shinyServer(function(input, output, session) {
                              }, deleteFile = TRUE)
 
                              output$stats <- renderUI({
-                               h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", sep=""))
+                               h4(paste(tot_no, " | ", tot_yes, " - ", yes_pct, "%", " (", tot_done, ")", sep=""))
                              })
 
 
