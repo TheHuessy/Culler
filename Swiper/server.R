@@ -12,8 +12,14 @@ the_date <- format(Sys.time(), "%Y-%m-%d:%H:%M")
 print(the_date)
 
 ##############
+creds_path <<- Sys.getenv('CREDS_PATH')
 
-creds <<- read_yaml(Sys.getenv('CREDS_PATH'))
+if (nchar(creds_path) <= 0) {
+    print("Master Variables not sourced, killing app...")
+  quit(save="no")
+}
+
+creds <<- read_yaml(creds_path)
 
 sql_driver <<- dbDriver("PostgreSQL")
 
@@ -370,8 +376,10 @@ shinyServer(function(input, output, session) {
 
                              cnt <<- get_cnt_safe(work,as.numeric(cnt[1]))
 
-#                             yes_pct <<- round(tot_yes/as.numeric(cnt[1]), digits = 3)*100
                              yes_pct <<- round(tot_yes/(tot_yes+tot_no), digits = 3)*100
+                             if (is.nan(yes_pct) == TRUE){
+                               yes_pct <<- 0
+                             }
 
                              save_if_5(as.numeric(cnt[1]))
 
